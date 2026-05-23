@@ -13,7 +13,7 @@ import com.example.data.model.TransactionEntity
 import com.example.data.repository.TransactionRepository
 import com.example.engine.BudgetEngine
 import com.example.engine.GeminiSmsParser
-import com.example.engine.ParsedSMS
+import com.example.engine.LegacyParsedSms
 import com.example.engine.TFLiteNERAgent
 import com.example.engine.SmsPreFilter
 import com.example.engine.DeviceCapabilityChecker
@@ -86,7 +86,7 @@ class MaalytiViewModel(application: Application) : AndroidViewModel(application)
     private val _isParsing = MutableStateFlow(false)
     val isParsing = _isParsing.asStateFlow()
 
-    private val _parsingResultAlert = MutableStateFlow<ParsedSMS?>(null)
+    private val _parsingResultAlert = MutableStateFlow<LegacyParsedSms?>(null)
     val parsingResultAlert = _parsingResultAlert.asStateFlow()
 
     // Observe Room streams
@@ -311,7 +311,7 @@ class MaalytiViewModel(application: Application) : AndroidViewModel(application)
                     )
                     repository.insertTransaction(entity)
 
-                    val legacyParsedSMS = ParsedSMS(
+                    val legacyParsedSMS = LegacyParsedSms(
                         bankName = parsedResult.bankName ?: "Unknown Bank",
                         amount = parsedResult.amount ?: 0.0,
                         currency = parsedResult.currency ?: "SAR",
@@ -346,7 +346,7 @@ class MaalytiViewModel(application: Application) : AndroidViewModel(application)
                     )
                     repository.insertTransaction(entity)
 
-                    val legacyParsedSMS = ParsedSMS(
+                    val legacyParsedSMS = LegacyParsedSms(
                         bankName = parsedResult.bankName ?: "Needs Review",
                         amount = parsedResult.amount ?: 0.0,
                         currency = parsedResult.currency ?: "SAR",

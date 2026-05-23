@@ -20,7 +20,7 @@ object GeminiSmsParser {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    suspend fun parseWithGemini(smsBody: String): ParsedSMS? = withContext(Dispatchers.IO) {
+    suspend fun parseWithGemini(smsBody: String): LegacyParsedSms? = withContext(Dispatchers.IO) {
         val apiKey = try {
             BuildConfig.GEMINI_API_KEY
         } catch (e: Exception) {
@@ -110,7 +110,7 @@ object GeminiSmsParser {
                         val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US)
                         val dateString = sdf.format(java.util.Date())
 
-                        return@withContext ParsedSMS(
+                        return@withContext LegacyParsedSms(
                             bankName = bankName,
                             amount = amount,
                             currency = currency,
