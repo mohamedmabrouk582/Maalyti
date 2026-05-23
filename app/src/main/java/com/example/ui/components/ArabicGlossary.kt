@@ -44,7 +44,12 @@ object ArabicGlossary {
         "sync_firestore" to "مزامنة Cloud Firestore",
         "logged_in_as" to "مسجل باسم",
         "never_synced" to "لم تتم المزامنة بعد",
-        "last_sync" to "آخر مزامنة:"
+        "last_sync" to "آخر مزامنة:",
+        "salary_status" to "حالة الراتب الشهري وعمليات الإيداع",
+        "monthly_salary" to "قيمة الراتب المستكشف",
+        "detected_salary_date" to "تاريخ الدورة المالية للراتب",
+        "salary_source" to "البنك المودع لجهة الصرف",
+        "no_salary_detected" to "لم يتم رصد إيداع راتب لهذا الشهر بعد"
     )
 
     fun get(key: String, isArabic: Boolean): String {
@@ -53,6 +58,11 @@ object ArabicGlossary {
         } else {
             // Return basic English representation
             when(key) {
+                "salary_status" -> "Detected Monthly Salary Info"
+                "monthly_salary" -> "Extracted Salary Amount"
+                "detected_salary_date" -> "Salary Payout Date"
+                "salary_source" -> "Credited Bank & Source"
+                "no_salary_detected" -> "No salary deposit detected in this month's alerts"
                 "app_title" -> "Maalyti — On-Device SMS AI"
                 "budget_ring" -> "Daily Budget Velocity Ring"
                 "remaining" -> "Remaining"

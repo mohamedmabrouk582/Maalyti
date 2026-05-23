@@ -33,6 +33,7 @@ fun HomeDashboard(
     val transactionsState by vm.transactions.collectAsState()
     val burnDays by vm.burnRateDays.collectAsState()
     val targetCurrency by vm.selectedTargetCurrency.collectAsState()
+    val salaryState by vm.currentSalary.collectAsState()
     
     val isParsingState by vm.isParsing.collectAsState()
     val parsingAlertState by vm.parsingResultAlert.collectAsState()
@@ -253,6 +254,153 @@ fun HomeDashboard(
                             text = ArabicGlossary.get("spent_today", isArabic),
                             fontSize = 12.sp,
                             color = CosmicTextMuted
+                        )
+                    }
+                }
+            }
+        }
+
+        // 1.5 Detected Salary Status Card
+        val salary = salaryState
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp)),
+            colors = CardDefaults.cardColors(containerColor = CosmicSurface),
+            border = BorderStroke(1.dp, CosmicSurfaceElevated.copy(alpha = 0.4f)),
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF1B3A1E)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Payments,
+                                contentDescription = "Salary Icon",
+                                tint = CosmicPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = ArabicGlossary.get("salary_status", isArabic),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = CosmicTextWhite
+                        )
+                    }
+                    
+                    // Cute dynamic status chip
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (salary != null) Color(0xFF1B3A1E) else CosmicSurfaceElevated)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (salary != null) (if (isArabic) "تم التحقق 👑" else "Verified 👑") else (if (isArabic) "لم يتم الرصد" else "Scanning"),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (salary != null) CosmicPrimary else CosmicTextMuted
+                        )
+                    }
+                }
+
+                if (salary != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(CosmicSurfaceElevated, RoundedCornerShape(12.dp))
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = ArabicGlossary.get("monthly_salary", isArabic),
+                                fontSize = 12.sp,
+                                color = CosmicTextMuted
+                            )
+                            Text(
+                                text = "${String.format("%,.2f", salary.amount)} $targetCurrency",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black,
+                                color = CosmicPrimary
+                            )
+                        }
+                        
+                        HorizontalDivider(color = CosmicSurface.copy(alpha = 0.5f))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = ArabicGlossary.get("detected_salary_date", isArabic),
+                                    fontSize = 11.sp,
+                                    color = CosmicTextMuted
+                                )
+                                Text(
+                                    text = salary.dateString,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CosmicTextWhite
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = ArabicGlossary.get("salary_source", isArabic),
+                                    fontSize = 11.sp,
+                                    color = CosmicTextMuted
+                                )
+                                Text(
+                                    text = salary.bankName,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CosmicTextWhite
+                                )
+                            }
+                        }
+                    }
+                    
+                    Text(
+                        text = if (isArabic) "مستخرج من رسالة: \"${salary.rawText}\"" else "Extracted from SMS: \"${salary.rawText}\"",
+                        fontSize = 10.sp,
+                        color = CosmicTextMuted,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        maxLines = 2,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = ArabicGlossary.get("no_salary_detected", isArabic),
+                            fontSize = 12.sp,
+                            color = CosmicTextMuted,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }

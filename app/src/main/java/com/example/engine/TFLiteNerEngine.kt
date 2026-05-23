@@ -40,7 +40,7 @@ class TFLiteNerEngine(private val context: Context) {
     }
   }
 
-  fun parse(rawSms: String, senderNumber: String?): ParsedSms {
+  fun parse(rawSms: String, senderNumber: String?, receivedAt: Long? = null): ParsedSms {
     // 1. Text normalization & Arabic preprocessing
     val cleanText = preprocessArabicText(rawSms)
     val lowerText = cleanText.lowercase()
@@ -56,10 +56,11 @@ class TFLiteNerEngine(private val context: Context) {
     val merchant = extractMerchant(cleanText, transactionType)
     val balance = extractBalance(cleanText)
     
-    // Current date formatted to ISO 8601
+    // Format date string from receivedAt timestamp or fallback to Date()
+    val checkDate = if (receivedAt != null) Date(receivedAt) else Date()
     val dateString = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
       timeZone = TimeZone.getTimeZone("UTC")
-    }.format(Date())
+    }.format(checkDate)
 
     // 3. Confidence formulation (mean score logic)
     var confidenceScore = 0.5f

@@ -41,7 +41,8 @@ enum class ParserEngine {
   GEMINI_NANO,      // AICore on-device
   GEMMA_MEDIAPIPE,  // MediaPipe local model
   TFLITE_NER,       // bundled TFLite models
-  MANUAL            // user entered manually
+  MANUAL,           // user entered manually
+  GEMINI_3_5_FLASH  // Gemini 3.5 Flash Cloud engine
 }
 
 interface SmsParserEngine {

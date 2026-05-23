@@ -30,6 +30,12 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.MaalytiViewModel
 import kotlinx.coroutines.flow.collectLatest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MaalytiViewModel by viewModels()
@@ -56,6 +62,37 @@ fun MainAppLayout(vm: MaalytiViewModel) {
     val lastSyncStr by vm.lastSyncedStr.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        // Trigger SMS sync sandbox flow inside VM safely
+        vm.syncLocalDeviceAndSandboxSms(context)
+    }
+
+    LaunchedEffect(Unit) {
+        val hasReadPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_SMS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val hasReceivePermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECEIVE_SMS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasReadPermission || !hasReceivePermission) {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.READ_SMS,
+                    Manifest.permission.RECEIVE_SMS
+                )
+            )
+        } else {
+            vm.syncLocalDeviceAndSandboxSms(context)
+        }
+    }
 
     // Collect Viewmodel Events to show beautiful SnackBar notifications
     LaunchedEffect(key1 = true) {

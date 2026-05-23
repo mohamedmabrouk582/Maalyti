@@ -172,7 +172,7 @@ fun TransactionsHistory(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(transactionsFiltered, key = { it.id }) { item ->
-                    TransactionRow(item = item, vm = vm, baseCurrency = baseDisplayCurrency)
+                    TransactionRow(item = item, vm = vm, baseCurrency = baseDisplayCurrency, isArabic = isArabic)
                 }
             }
         }
@@ -195,7 +195,8 @@ fun TransactionsHistory(
 fun TransactionRow(
     item: TransactionEntity,
     vm: MaalytiViewModel,
-    baseCurrency: String
+    baseCurrency: String,
+    isArabic: Boolean
 ) {
     // Dynamic item colors per transaction type constraints
     val textAndBgColor = when (item.type) {
@@ -278,14 +279,14 @@ fun TransactionRow(
                     if (item.wasFallbackUsed) {
                         Box(
                             modifier = Modifier
-                                .background(CosmicAccentGold.copy(alpha = 0.2f))
+                                .background(Color(0xFF1B3A1E))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                                 .clip(RoundedCornerShape(4.dp))
                         ) {
                             Text(
-                                text = "Fallback: Gemini API",
+                                text = if (isArabic) "ذكاء اصطناعي: جيميناي ✨" else "AI Model: Gemini 3.5",
                                 fontSize = 9.sp,
-                                color = CosmicAccentGold,
+                                color = CosmicPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                         }

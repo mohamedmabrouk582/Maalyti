@@ -5,7 +5,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.regex.Pattern
 
-data class LegacyParsedSms(
+data class ParsedSMS(
     val bankName: String,
     val amount: Double,
     val currency: String,
@@ -28,7 +28,7 @@ object TFLiteNERAgent {
         "ريال", "جنيه", "درهم", "دينار", "دولار", "ر\\.س", "ج\\.م", "د\\.إ", "جنيه مصري", "ريال سعودي"
     )
 
-    fun parse(senderId: String, smsBody: String): LegacyParsedSms {
+    fun parse(senderId: String, smsBody: String): ParsedSMS {
         val cleanBody = smsBody.trim()
         val lowerBody = cleanBody.lowercase(Locale.ROOT)
 
@@ -67,7 +67,7 @@ object TFLiteNERAgent {
         // Cap confidence at 1.0 (100%)
         val finalConfidence = minOf(1.0, confidenceScore)
 
-        return LegacyParsedSms(
+        return ParsedSMS(
             bankName = bankName,
             amount = amount,
             currency = currency,
