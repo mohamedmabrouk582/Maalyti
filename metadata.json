@@ -1,0 +1,6 @@
+{
+  "name": "Maalyti",
+  "description": "On-device bank SMS parser first-class personal finance planner and AI budget assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
