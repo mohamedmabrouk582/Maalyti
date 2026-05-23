@@ -42,26 +42,68 @@ class SmsReceiver : BroadcastReceiver() {
                             db.budgetDao()
                         )
 
-                        // Run TFLite multi-lingual parser on-device!
-                        val onDeviceParsed = TFLiteNERAgent.parse(sender, body)
-
-                        val entity = TransactionEntity(
-                            bankName = onDeviceParsed.bankName,
-                            amount = onDeviceParsed.amount,
-                            currency = onDeviceParsed.currency,
-                            merchant = onDeviceParsed.merchant,
-                            balance = onDeviceParsed.balance,
-                            cardLast4 = onDeviceParsed.cardLast4,
-                            dateString = onDeviceParsed.dateString,
-                            type = onDeviceParsed.type,
-                            rawBody = onDeviceParsed.rawBody,
-                            sender = sender,
-                            confidence = onDeviceParsed.confidence,
-                            wasFallbackUsed = false
+                        // Run smart parser on-device!
+                        val preFilter = SmsPreFilter()
+                        val checker = DeviceCapabilityChecker(context)
+                        val nano = GeminiNanoEngine(context)
+                        val mediaPipe = MediaPipeGemmaEngine(context)
+                        val tflite = TFLiteNerEngine(context)
+                        val correction = CorrectionLearningEngine(db.parsedSmsDao())
+                        val smartParser = SmartSmsParserEngine(
+                            preFilter, nano, mediaPipe, tflite, checker, correction
                         )
 
-                        repository.insertTransaction(entity)
-                        Log.d(TAG, "SmsReceiver successfully processed and inserted transaction: ${onDeviceParsed.amount} ${onDeviceParsed.currency}")
+                        val parsedResult = smartParser.parse(body, sender, System.currentTimeMillis())
+
+                        if (parsedResult.isBanking) {
+                            // 1. Insert into parsed_sms historical tracking
+                            val parsedSmsEntity = com.example.data.model.ParsedSmsEntity(
+                                isBanking = parsedResult.isBanking,
+                                bankName = parsedResult.bankName,
+                                amount = parsedResult.amount,
+                                currency = parsedResult.currency,
+                                merchantName = parsedResult.merchantName,
+                                transactionType = parsedResult.transactionType.name,
+                                transactionDate = parsedResult.transactionDate,
+                                balanceAfter = parsedResult.balanceAfter,
+                                cardLastDigits = parsedResult.cardLastDigits,
+                                confidence = parsedResult.confidence,
+                                color = parsedResult.color.name,
+                                rawSms = parsedResult.rawSms,
+                                senderNumber = sender,
+                                engineUsed = parsedResult.engineUsed.name
+                            )
+                            db.parsedSmsDao().insert(parsedSmsEntity)
+
+                            // 2. Map transaction category
+                            val typeString = when (parsedResult.transactionType) {
+                                TransactionType.WITHDRAW, TransactionType.TRANSFER_OUT -> "withdraw"
+                                TransactionType.DEPOSIT, TransactionType.TRANSFER_IN, TransactionType.REFUND -> "deposit"
+                                TransactionType.OTP -> "otp"
+                                else -> "other"
+                            }
+
+                            // 3. Populate standard viewable transactions list
+                            val entity = TransactionEntity(
+                                bankName = parsedResult.bankName ?: "Unknown Bank",
+                                amount = parsedResult.amount ?: 0.0,
+                                currency = parsedResult.currency ?: "SAR",
+                                merchant = parsedResult.merchantName ?: "Merchant",
+                                balance = parsedResult.balanceAfter,
+                                cardLast4 = parsedResult.cardLastDigits,
+                                dateString = parsedResult.transactionDate ?: "now",
+                                type = typeString,
+                                rawBody = parsedResult.rawSms,
+                                sender = sender,
+                                confidence = parsedResult.confidence.toDouble(),
+                                wasFallbackUsed = parsedResult.confidence < 0.40f
+                            )
+
+                            repository.insertTransaction(entity)
+                            Log.d(TAG, "SmsReceiver successfully processed on-device SMS transaction: ${parsedResult.amount} ${parsedResult.currency}")
+                        } else {
+                            Log.d(TAG, "SmsReceiver skipped: message classified as non-banking")
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error processing SMS in receiver", e)
                     }

@@ -12,6 +12,10 @@ import com.example.data.model.AccountEntity
 import com.example.data.model.BudgetEntity
 import com.example.data.model.CardEntity
 import com.example.data.model.TransactionEntity
+import com.example.data.model.ParsedSmsEntity
+import com.example.data.model.UserCorrectionEntity
+import com.example.data.model.MerchantRuleEntity
+import com.example.data.model.SenderOverrideEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -82,9 +86,13 @@ interface BudgetDao {
         TransactionEntity::class,
         AccountEntity::class,
         CardEntity::class,
-        BudgetEntity::class
+        BudgetEntity::class,
+        ParsedSmsEntity::class,
+        UserCorrectionEntity::class,
+        MerchantRuleEntity::class,
+        SenderOverrideEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class MaalytiDatabase : RoomDatabase() {
@@ -92,4 +100,5 @@ abstract class MaalytiDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun cardDao(): CardDao
     abstract fun budgetDao(): BudgetDao
+    abstract fun parsedSmsDao(): ParsedSmsDao
 }

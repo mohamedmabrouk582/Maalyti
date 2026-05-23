@@ -87,6 +87,11 @@ roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi
 roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule", version.ref = "roborazzi" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }
+play-services-tflite-support = { group = "com.google.android.gms", name = "play-services-tflite-support", version = "16.1.0" }
+tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version = "0.10.14" }
+tensorflow-lite = { group = "org.tensorflow", name = "tensorflow-lite", version = "2.14.0" }
+tensorflow-lite-support = { group = "org.tensorflow", name = "tensorflow-lite-support", version = "0.4.4" }
+tensorflow-lite-task-text = { group = "org.tensorflow", name = "tensorflow-lite-task-text", version = "0.4.4" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

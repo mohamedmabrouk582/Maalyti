@@ -4,6 +4,7 @@ plugins {
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
+  kotlin("plugin.serialization") version "2.2.10"
 }
 
 android {
@@ -118,4 +119,10 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+
+  // On-device Parsing Engine Dependencies
+  implementation(libs.play.services.tflite.support)
+  implementation(libs.tasks.genai)
+  implementation("com.google.android.gms:play-services-tflite-java:16.1.0")
+  implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 }

@@ -15,6 +15,15 @@ import com.example.engine.BudgetEngine
 import com.example.engine.GeminiSmsParser
 import com.example.engine.ParsedSMS
 import com.example.engine.TFLiteNERAgent
+import com.example.engine.SmsPreFilter
+import com.example.engine.DeviceCapabilityChecker
+import com.example.engine.GeminiNanoEngine
+import com.example.engine.MediaPipeGemmaEngine
+import com.example.engine.TFLiteNerEngine
+import com.example.engine.CorrectionLearningEngine
+import com.example.engine.SmartSmsParserEngine
+import com.example.engine.TransactionType
+import com.example.data.model.ParsedSmsEntity
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -240,76 +249,119 @@ class MaalytiViewModel(application: Application) : AndroidViewModel(application)
     fun parseIncomingSms(sender: String, body: String) {
         viewModelScope.launch {
             _isParsing.value = true
-            // 1) Run TFLite multilingual NER model natively
-            val onDeviceResult = TFLiteNERAgent.parse(sender, body)
             
-            Log.d("MaalytiVM", "TFLiteNERAgent on-device parsed SMS with confidence: ${onDeviceResult.confidence}")
+            // Core on-device multi-layered parser injection
+            val preFilter = SmsPreFilter()
+            val checker = DeviceCapabilityChecker(getApplication())
+            val nano = GeminiNanoEngine(getApplication())
+            val mediaPipe = MediaPipeGemmaEngine(getApplication())
+            val tflite = TFLiteNerEngine(getApplication())
+            val correction = CorrectionLearningEngine(db.parsedSmsDao())
+            val smartParser = SmartSmsParserEngine(
+                preFilter, nano, mediaPipe, tflite, checker, correction
+            )
+
+            val parsedResult = smartParser.parse(body, sender, System.currentTimeMillis())
             
-            if (onDeviceResult.confidence >= 0.40) {
-                // High confidence - automatically save
-                repository.insertTransaction(
-                    TransactionEntity(
-                        bankName = onDeviceResult.bankName,
-                        amount = onDeviceResult.amount,
-                        currency = onDeviceResult.currency,
-                        merchant = onDeviceResult.merchant,
-                        balance = onDeviceResult.balance,
-                        cardLast4 = onDeviceResult.cardLast4,
-                        dateString = onDeviceResult.dateString,
-                        type = onDeviceResult.type,
-                        rawBody = onDeviceResult.rawBody,
+            Log.d("MaalytiVM", "SmartSmsParserEngine on-device parsed SMS with confidence: ${parsedResult.confidence}")
+            
+            if (parsedResult.isBanking) {
+                // Save historical parsed_sms entry
+                val parsedSmsEntity = ParsedSmsEntity(
+                    isBanking = parsedResult.isBanking,
+                    bankName = parsedResult.bankName,
+                    amount = parsedResult.amount,
+                    currency = parsedResult.currency,
+                    merchantName = parsedResult.merchantName,
+                    transactionType = parsedResult.transactionType.name,
+                    transactionDate = parsedResult.transactionDate,
+                    balanceAfter = parsedResult.balanceAfter,
+                    cardLastDigits = parsedResult.cardLastDigits,
+                    confidence = parsedResult.confidence,
+                    color = parsedResult.color.name,
+                    rawSms = parsedResult.rawSms,
+                    senderNumber = sender,
+                    engineUsed = parsedResult.engineUsed.name
+                )
+                db.parsedSmsDao().insert(parsedSmsEntity)
+
+                // Map standard transaction type
+                val typeString = when (parsedResult.transactionType) {
+                    TransactionType.WITHDRAW, TransactionType.TRANSFER_OUT -> "withdraw"
+                    TransactionType.DEPOSIT, TransactionType.TRANSFER_IN, TransactionType.REFUND -> "deposit"
+                    TransactionType.OTP -> "otp"
+                    else -> "other"
+                }
+
+                // High confidence - automatically save to viewable transactions list
+                if (parsedResult.confidence >= 0.40) {
+                    val entity = TransactionEntity(
+                        bankName = parsedResult.bankName ?: "Unknown Bank",
+                        amount = parsedResult.amount ?: 0.0,
+                        currency = parsedResult.currency ?: "SAR",
+                        merchant = parsedResult.merchantName ?: "Merchant",
+                        balance = parsedResult.balanceAfter,
+                        cardLast4 = parsedResult.cardLastDigits,
+                        dateString = parsedResult.transactionDate ?: "now",
+                        type = typeString,
+                        rawBody = parsedResult.rawSms,
                         sender = sender,
-                        confidence = onDeviceResult.confidence,
+                        confidence = parsedResult.confidence.toDouble(),
                         wasFallbackUsed = false
                     )
-                )
-                _parsingResultAlert.value = onDeviceResult
-                _eventFlow.emit("On-device AI parsed SMS with high confidence (${(onDeviceResult.confidence*100).toInt()}%). Saved locally.")
-            } else {
-                // Low confidence model fallback - Call Gemini API
-                _eventFlow.emit("Confidence low (${(onDeviceResult.confidence*100).toInt()}%). Calling Gemini AI fallback...")
-                
-                val geminiResult = GeminiSmsParser.parseWithGemini(body)
-                if (geminiResult != null) {
-                    repository.insertTransaction(
-                        TransactionEntity(
-                            bankName = geminiResult.bankName,
-                            amount = geminiResult.amount,
-                            currency = geminiResult.currency,
-                            merchant = geminiResult.merchant,
-                            balance = geminiResult.balance,
-                            cardLast4 = geminiResult.cardLast4,
-                            dateString = geminiResult.dateString,
-                            type = geminiResult.type,
-                            rawBody = geminiResult.rawBody,
-                            sender = sender,
-                            confidence = 1.0,
-                            wasFallbackUsed = true
-                        )
+                    repository.insertTransaction(entity)
+
+                    val legacyParsedSMS = ParsedSMS(
+                        bankName = parsedResult.bankName ?: "Unknown Bank",
+                        amount = parsedResult.amount ?: 0.0,
+                        currency = parsedResult.currency ?: "SAR",
+                        merchant = parsedResult.merchantName ?: "Merchant",
+                        balance = parsedResult.balanceAfter,
+                        cardLast4 = parsedResult.cardLastDigits,
+                        dateString = parsedResult.transactionDate ?: "now",
+                        type = typeString,
+                        confidence = parsedResult.confidence.toDouble(),
+                        rawBody = parsedResult.rawSms
                     )
-                    _parsingResultAlert.value = geminiResult
-                    _eventFlow.emit("Gemini SMS Parser completed fallback sync successfully. Saved.")
+                    _parsingResultAlert.value = legacyParsedSMS
+                    _eventFlow.emit("On-device AI parsed SMS successfully (Engine: ${parsedResult.engineUsed.name}). Saved locally.")
                 } else {
-                    // Fallback to on-device even if low confidence if Gemini fails
-                    repository.insertTransaction(
-                        TransactionEntity(
-                            bankName = onDeviceResult.bankName,
-                            amount = onDeviceResult.amount,
-                            currency = onDeviceResult.currency,
-                            merchant = onDeviceResult.merchant,
-                            balance = onDeviceResult.balance,
-                            cardLast4 = onDeviceResult.cardLast4,
-                            dateString = onDeviceResult.dateString,
-                            type = onDeviceResult.type,
-                            rawBody = onDeviceResult.rawBody,
-                            sender = sender,
-                            confidence = onDeviceResult.confidence,
-                            wasFallbackUsed = false
-                        )
+                    // Low confidence model fallback (<40%) - Call Gemini API if user wants fallback.
+                    // Or since we want purely offline and privacy-first, we can flag review state.
+                    _eventFlow.emit("Inference confidence low (${(parsedResult.confidence*100).toInt()}%). Stored as yellow review status.")
+                    
+                    val entity = TransactionEntity(
+                        bankName = parsedResult.bankName ?: "Needs Review",
+                        amount = parsedResult.amount ?: 0.0,
+                        currency = parsedResult.currency ?: "SAR",
+                        merchant = parsedResult.merchantName ?: "Merchant",
+                        balance = parsedResult.balanceAfter,
+                        cardLast4 = parsedResult.cardLastDigits,
+                        dateString = parsedResult.transactionDate ?: "now",
+                        type = typeString,
+                        rawBody = parsedResult.rawSms,
+                        sender = sender,
+                        confidence = parsedResult.confidence.toDouble(),
+                        wasFallbackUsed = false
                     )
-                    _parsingResultAlert.value = onDeviceResult
-                    _eventFlow.emit("Saved on-device prediction with warning (Gemini fallback offline).")
+                    repository.insertTransaction(entity)
+
+                    val legacyParsedSMS = ParsedSMS(
+                        bankName = parsedResult.bankName ?: "Needs Review",
+                        amount = parsedResult.amount ?: 0.0,
+                        currency = parsedResult.currency ?: "SAR",
+                        merchant = parsedResult.merchantName ?: "Merchant",
+                        balance = parsedResult.balanceAfter,
+                        cardLast4 = parsedResult.cardLastDigits,
+                        dateString = parsedResult.transactionDate ?: "now",
+                        type = typeString,
+                        confidence = parsedResult.confidence.toDouble(),
+                        rawBody = parsedResult.rawSms
+                    )
+                    _parsingResultAlert.value = legacyParsedSMS
                 }
+            } else {
+                _eventFlow.emit("SmsPreFilter rejected: This message does not look like a bank SMS notification.")
             }
             _isParsing.value = false
         }
